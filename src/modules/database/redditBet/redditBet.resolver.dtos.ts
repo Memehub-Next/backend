@@ -61,4 +61,7 @@ export class LeaderboardDTO implements ILeaderboardData {
 }
 
 @ObjectType()
+export class LeaderboardPDTO extends CreatePDTO(LeaderboardDTO) {}
+
+@ObjectType()
 export class RedditBetPDTO extends CreatePDTO(RedditBetEntity) {}

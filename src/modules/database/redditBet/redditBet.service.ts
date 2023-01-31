@@ -1,5 +1,4 @@
 import { Injectable } from "@nestjs/common";
-import { registerEnumType } from "@nestjs/graphql";
 import { InjectRepository } from "@nestjs/typeorm";
 import dayjs from "dayjs";
 import random from "random";
@@ -42,11 +41,6 @@ export interface ISeasonSummary {
   betSizeAvg: number;
   numBuys: number;
 }
-
-// ELeaderboard has associated Leaderboard namspace
-// Hence is located in Extensions folder
-// Therefore we register Enum with Nestjs here
-registerEnumType(ELeaderboard, { name: "ELeaderboard" });
 
 export class IBetData {
   betSize: number;
@@ -91,7 +85,7 @@ export class RedditBetService {
         redditMemeId,
         betSize: random.float() > 0.95 ? gbp : random.int(1, Math.round(gbp / 10)),
         ePositionSide: this.fakeSides[random.int(0, this.fakeSides.length - 1)],
-        target: this.fakeTargets[random.int(0, this.fakeSides.length - 1)],
+        target: this.fakeTargets[random.int(0, this.fakeTargets.length - 1)],
       })
     );
   }
@@ -147,10 +141,9 @@ export class RedditBetService {
     const query = this.repo
       .createQueryBuilder("reddit_bet")
       .innerJoin("reddit_bet.user", "user")
-      .select("user.id", "username")
-      .addSelect("user.username", "username")
+      .select("user.username", "username")
       .addSelect("user.avatar", "avatar")
-      .groupBy("user.id");
+      .groupBy("user.username");
     switch (eLeaderboard) {
       case ELeaderboard.Season:
         if (!seasonId) throw new Error("no season id");
@@ -197,7 +190,6 @@ export class RedditBetService {
         .createQueryBuilder()
         .select('"user_ranks"."rank"', "rank")
         .addSelect('"user_ranks"."profitLoss"', "profitLoss")
-        .addSelect('"user_ranks"."username"', "username")
         .addSelect('"user_ranks"."username"', "username")
         .addSelect('"user_ranks"."avatar"', "avatar")
         .from(`(${query.getQuery()})`, "user_ranks")

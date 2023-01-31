@@ -1,20 +1,5 @@
 import { UseGuards } from "@nestjs/common";
 import { Args, Mutation, Parent, Query, ResolveField, Resolver } from "@nestjs/graphql";
-import { SeasonService } from "../season/season.service";
-import { GoodBoyPointsService } from "./../goodBoyPoints/gbp.service";
-import { RedditBetEntity } from "./redditBet.entity";
-import {
-  LeaderboardArgs,
-  MyRedditBetsArgs,
-  PlaceBetArgs,
-  TakeLeaderboardArgs,
-  UsernameSeasonIdArgs,
-  UserRedditBetsArgs,
-  UserRedditBetsPaginatedArgs,
-} from "./redditBet.resolver.args";
-import { LeaderboardDTO, RedditBetPDTO, SeasonSummaryDTO } from "./redditBet.resolver.dtos";
-import { RedditBetService } from "./redditBet.service";
-
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import { FindOptionsWhere } from "typeorm";
@@ -25,6 +10,20 @@ import { IUserPassport } from "../../../interfaces/IUserPassport";
 import { IDataLoaders } from "../../dataloader/dataloader.service";
 import { BasicAuthGuard } from "../../guards/BasicAuthGuard";
 import { RedditMemeEntity } from "../redditMeme/redditMeme.entity";
+import { SeasonService } from "../season/season.service";
+import { GoodBoyPointsService } from "./../goodBoyPoints/gbp.service";
+import { RedditBetEntity } from "./redditBet.entity";
+import {
+  LeaderboardArgs,
+  LeaderboardPaginatedArgs,
+  MyRedditBetsArgs,
+  PlaceBetArgs,
+  UsernameSeasonIdArgs,
+  UserRedditBetsArgs,
+  UserRedditBetsPaginatedArgs,
+} from "./redditBet.resolver.args";
+import { LeaderboardDTO, LeaderboardPDTO, RedditBetPDTO, SeasonSummaryDTO } from "./redditBet.resolver.dtos";
+import { RedditBetService } from "./redditBet.service";
 dayjs.extend(utc);
 
 @Resolver(() => RedditBetEntity)
@@ -49,8 +48,6 @@ export class RedditBetResolver {
   async userRedditBetsPaginated(
     @Args() { eRedditBetOrder, username, ePositionSide, seasonId, isYolo, isASC, take, skip }: UserRedditBetsPaginatedArgs
   ) {
-    eRedditBetOrder;
-    isASC;
     const query = this.service.repo
       .createQueryBuilder("reddit_bet")
       .where("reddit_bet.username = :username", { username })
@@ -64,8 +61,9 @@ export class RedditBetResolver {
         ePositionSide === EPositionSide.Buy ? "DESC" : "ASC"
       );
     if (typeof isYolo === "boolean") query.orderBy("reddit_bet.is_yolo", isYolo ? "DESC" : "ASC");
-    // if (ePositionSide || typeof isYolo === "boolean") query.addOrderBy(`reddit_bet.${eRedditBetOrder.toSnake()}`, isASC ? "ASC" : "DESC");
-    // else query.orderBy(`reddit_bet.${eRedditBetOrder.toSnake()}`, isASC ? "ASC" : "DESC");
+    if (ePositionSide || typeof isYolo === "boolean")
+      query.addOrderBy(`reddit_bet.${eRedditBetOrder.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`)}`, isASC ? "ASC" : "DESC");
+    else query.orderBy(`reddit_bet.${eRedditBetOrder.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`)}`, isASC ? "ASC" : "DESC");
     const bets = await query.skip(skip).take(take).getMany();
     return { items: bets, hasMore: take === bets.length };
   }
@@ -95,26 +93,31 @@ export class RedditBetResolver {
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  @Query(() => [LeaderboardDTO])
+  @Query(() => LeaderboardPDTO)
   async leaderboard(
     // @Info() info: GraphQLResolveInfo,
-    @Args() { eLeaderboard, seasonId, take = 3 }: TakeLeaderboardArgs
-  ): Promise<LeaderboardDTO[]> {
+    @Args() { eLeaderboard, seasonId, take, skip }: LeaderboardPaginatedArgs
+  ): Promise<LeaderboardPDTO> {
     // info.cacheControl.setCacheHint({ maxAge: 60, scope: CacheScope.Public });
     seasonId = seasonId || (await this.seasonService.getCurrentSeasonId());
-    return this.service.leaderboardQuery({ eLeaderboard, seasonId }).limit(take).getRawMany<LeaderboardDTO>();
+    const leaderBoard = await this.service
+      .leaderboardQuery({ eLeaderboard, seasonId })
+      .limit(take)
+      .offset(skip)
+      .getRawMany<LeaderboardDTO>();
+    return { items: leaderBoard, hasMore: take === leaderBoard.length };
   }
 
   @Query(() => LeaderboardDTO, { nullable: true })
-  @UseGuards(BasicAuthGuard)
   async myLeaderboard(
     // @Info() info: GraphQLResolveInfo,
     @Args() { eLeaderboard, seasonId }: LeaderboardArgs,
-    @UserPassport() { username }: IUserPassport
+    @UserPassport() passport?: IUserPassport
   ) {
     // info.cacheControl.setCacheHint({ maxAge: 60, scope: CacheScope.Private });
+    if (!passport) return;
     seasonId = seasonId || (await this.seasonService.getCurrentSeasonId());
-    return this.service.leaderboardQuery({ eLeaderboard, seasonId, username }).getRawOne<LeaderboardDTO>();
+    return this.service.leaderboardQuery({ eLeaderboard, seasonId, username: passport.username }).getRawOne<LeaderboardDTO>();
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -125,7 +128,7 @@ export class RedditBetResolver {
   @Mutation(() => RedditBetEntity)
   @UseGuards(BasicAuthGuard)
   async placeBet(@Args() placeBetArgs: PlaceBetArgs, @UserPassport() { username }: IUserPassport): Promise<RedditBetEntity | undefined> {
-    const gbpEntity = await this.gbpService.repo.findOneByOrFail({ username });
+    const gbpEntity = await this.gbpService.getById({ username });
     return this.service.placeBet({ gbpEntity, ...placeBetArgs });
   }
 }

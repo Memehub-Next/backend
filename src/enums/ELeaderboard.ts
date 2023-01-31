@@ -1,3 +1,5 @@
+import { registerEnumType } from "@nestjs/graphql";
+
 export enum ELeaderboard {
   Daily = "Daily",
   Weekly = "Weekly",
@@ -6,6 +8,7 @@ export enum ELeaderboard {
   BestTrade = "Best Trade",
   LargestYolo = "Largest Yolo",
 }
+registerEnumType(ELeaderboard, { name: "ELeaderboard" });
 
 export namespace Leaderboard {
   export function toDays(eLeaderboard: ELeaderboard) {

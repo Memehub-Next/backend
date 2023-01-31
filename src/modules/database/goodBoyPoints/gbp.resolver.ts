@@ -23,4 +23,14 @@ export class GoodBoyPointsResolver {
   wojakLevel(@Args() { username }: UsernameArg) {
     return this.service.wojakLevel({ username });
   }
+
+  // @Mutation(() => Boolean)
+  // @EveryRole([EUserRole.Admin])
+  // @UseGuards(RoleGuard)
+  // async giveGBP(@UserPassport() { username }: IUserPassport): Promise<boolean> {
+  //   const gbpEntity = await this.service.getById({ username });
+  //   gbpEntity.amount += 100;
+  //   await this.service.repo.save(gbpEntity);
+  //   return true;
+  // }
 }

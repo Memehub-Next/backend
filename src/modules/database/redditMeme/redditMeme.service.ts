@@ -43,14 +43,13 @@ export class RedditMemeService {
       .getMany();
   }
 
-  async getRandomRedditMemes({ skip, take, username, traded, eTradedOrder }: IRandomRedditMemes) {
-    if (!username && traded) throw new UnauthorizedException();
-    const memesQ = this.repo.createQueryBuilder("reddit_meme").where("reddit_meme.percentile IS NOT NULL");
-    if (!traded) {
-      const memes = await memesQ.orderBy("RANDOM()").skip(skip).take(take).getMany();
-      return { hasMore: take === memes.length, items: memes };
-    }
-    memesQ.innerJoinAndSelect("reddit_meme.redditBets", "reddit_bet").where("reddit_bet.username = :username", { username });
+  async getTradedRedditMemes({ skip, take, username, eTradedOrder }: IRandomRedditMemes) {
+    if (!username) throw new UnauthorizedException();
+    const memesQ = this.repo
+      .createQueryBuilder("reddit_meme")
+      .where("reddit_meme.percentile IS NOT NULL")
+      .innerJoinAndSelect("reddit_meme.redditBets", "reddit_bet")
+      .where("reddit_bet.username = :username", { username });
     switch (eTradedOrder) {
       case ETradedOrder.Latest:
         memesQ.orderBy("reddit_bet.createdAt", "DESC");

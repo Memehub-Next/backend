@@ -30,7 +30,7 @@ export class FakerConsumer {
   async createFakeBet({ name }: TFakerJob<ICreateFakeBet>) {
     try {
       const user = await this.userService.getOneByMinGbp(1);
-      if (user) {
+      if (user && user.username !== "memehub") {
         const redditMeme = await this.redditMemeService.getBetableRedditMeme({
           username: user.username,
           minPercentile: random.float() > 0.5 ? 0.5 : 0,

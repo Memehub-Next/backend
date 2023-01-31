@@ -53,7 +53,7 @@ export class GoodBoyPointsService {
       .createQueryBuilder("gbp_entity")
       .select("SUM(gbp_entity.amount)", "gbp")
       .addSelect("gbp_entity.username", "username")
-      .where("gbp_entity.username IN (...usernames)", { usernames })
+      .where("gbp_entity.username IN (:...usernames)", { usernames })
       .groupBy("gbp_entity.username")
       .getRawMany<{ gbp: number; username: string }>();
   }

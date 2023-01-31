@@ -18,7 +18,7 @@ export class GoodBoyPointsDataloaderService {
     return {
       byUsername: new DataLoader<string, number>(async (usernames) => {
         const seasonId = await this.seasonService.getCurrentSeasonId();
-        const gbpEntities = await this.gbpService.repo.findBy({ username: In(usernames.map((username) => ({ username, seasonId }))) });
+        const gbpEntities = await this.gbpService.repo.findBy({ username: In(usernames), seasonId });
         const usernameToGbp = gbpEntities.reduce<Record<string, number | undefined>>(
           (prev, gbpEntity) => ({ [gbpEntity.username]: gbpEntity.amount, ...prev }),
           {}

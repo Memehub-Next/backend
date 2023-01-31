@@ -1,5 +1,5 @@
-import { Field, Float, ID, Int, ObjectType } from "@nestjs/graphql";
-import { Column, Entity, Generated, OneToMany, PrimaryColumn } from "typeorm";
+import { Field, Float, GraphQLISODateTime, ID, Int, ObjectType } from "@nestjs/graphql";
+import { Column, CreateDateColumn, Entity, Generated, OneToMany, PrimaryColumn } from "typeorm";
 import { v4 } from "uuid";
 import { RedditBetEntity } from "../redditBet/redditBet.entity";
 
@@ -30,6 +30,10 @@ export class RedditMemeEntity {
   @Field()
   @Column({ unique: true })
   url: string;
+
+  @Field(() => GraphQLISODateTime)
+  @CreateDateColumn({ name: "created_at", type: "timestamp with time zone", nullable: false })
+  createdAt: Date;
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

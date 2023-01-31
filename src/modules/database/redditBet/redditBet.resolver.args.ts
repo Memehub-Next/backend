@@ -13,7 +13,6 @@ export class UserRedditBetsPaginatedArgs extends PaginatedArgs {
   eRedditBetOrder: ERedditBetOrder;
 
   @Field(() => String)
-  @IsUUID()
   username: string;
 
   @Field(() => Boolean, { nullable: true })
@@ -34,7 +33,6 @@ export class UserRedditBetsPaginatedArgs extends PaginatedArgs {
 @ArgsType()
 export class UserRedditBetsArgs extends TakeArg {
   @Field(() => String)
-  @IsUUID()
   username: string;
 
   @Field(() => EPositionSide, { nullable: true })
@@ -98,15 +96,14 @@ export class LeaderboardArgs {
 }
 
 @ArgsType()
-export class TakeLeaderboardArgs extends LeaderboardArgs {
-  @Field(() => ELeaderboard)
-  eLeaderboard: ELeaderboard;
-
+export class LeaderboardPaginatedArgs extends PaginatedArgs {
   @Field(() => Int, { nullable: true })
   @IsOptional()
-  @Min(3)
-  @Max(50)
-  take?: number;
+  @Validate(SeasonIdConstraint)
+  seasonId?: number;
+
+  @Field(() => ELeaderboard)
+  eLeaderboard: ELeaderboard;
 }
 
 @ArgsType()
@@ -117,6 +114,5 @@ export class UserRankArgs {
   seasonId?: number;
 
   @Field()
-  @IsUUID()
   username: string;
 }
