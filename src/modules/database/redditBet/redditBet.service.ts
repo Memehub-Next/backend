@@ -202,7 +202,7 @@ export class RedditBetService {
     return this.repo
       .createQueryBuilder("reddit_bet")
       .select("COUNT(reddit_bet.id)", "numTrades")
-      .addSelect("COUNT(CASE WHEN reddit_bet.profit_loss > 0 THEN 1 ELSE 0 END)", "numGoodTrades")
+      .addSelect("SUM(CASE WHEN reddit_bet.profit_loss > 0 THEN 1 ELSE 0 END)", "numGoodTrades")
       .addSelect("SUM(reddit_bet.profit_loss)", "profitLossTotal")
       .addSelect("SUM(reddit_bet.profit_loss)/COUNT(reddit_bet.id)", "profitLossPerTrade")
       .addSelect("SUM(CASE WHEN reddit_bet.is_yolo IS TRUE THEN 1 ELSE 0 END)", "numIsYolo")
