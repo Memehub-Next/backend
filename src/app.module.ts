@@ -18,6 +18,7 @@ import { IEnvironments } from "./config/environment.interface";
 import { databaseEnvironment } from "./config/services/database.config";
 import { redisEnvironment } from "./config/services/redis.config";
 import { serverEnvironment } from "./config/services/server.config";
+import { AppLoggerMiddleware } from "./middleware/request-logger";
 import { AuthModule } from "./modules/auth/auth.module";
 import { CryptoCompareModule } from "./modules/cryptocompare/cryptocompare.module";
 import { GoodBoyPointsModule } from "./modules/database/goodBoyPoints/gbp.module";
@@ -139,6 +140,7 @@ const ExpresSessionStore = connectRedis(expressSession);
 export class AppModule implements NestModule {
   constructor(private readonly configService: ConfigService<IEnvironments, true>, private readonly redisService: RedisService) {}
   configure(consumer: MiddlewareConsumer) {
+    consumer.apply(AppLoggerMiddleware).forRoutes("*");
     consumer
       .apply(
         expressSession({
