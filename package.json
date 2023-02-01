@@ -11,10 +11,10 @@
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/src/main",
-    "typeorm": "ts-node ./node_modules/typeorm/cli.js --config ./ormconfig.ts",
+    "typeorm": "ts-node ./node_modules/typeorm/cli.js",
     "migration:generate": "ts-node ./node_modules/typeorm/cli.js migration:generate ./migrations/migrations -d ./ormconfig.ts",
     "migration:run": "ts-node ./node_modules/typeorm/cli.js migration:run -d ./ormconfig.ts",
-    "migration:run:js": "typeorm migration:run --config ./dist/ormconfig.js"
+    "migration:run:js": "typeorm migration:run --d ./dist/ormconfig.js"
   },
   "dependencies": {
     "@anchan828/nest-sendgrid": "^0.6.28",
