@@ -1,6 +1,6 @@
 {
   "include": ["src","migrations","ormconfig.ts"],
-  "exclude": [".npm","node_modules","src/schema.gql"],
+  "exclude": [".npm","node_modules","src/schema.gql", "services"],
   "compilerOptions": {
     "module": "commonjs",
     "declaration": true,

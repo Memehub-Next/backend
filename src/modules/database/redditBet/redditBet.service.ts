@@ -18,12 +18,6 @@ export interface IUserRedditBetStats {
   numGoodTrades: number;
 }
 
-export interface ILeaderboardData {
-  username: string;
-  profitLoss: number;
-  avatar?: string;
-}
-
 export interface IProfitLossChartDataDTO {
   day: number;
   profit: number;

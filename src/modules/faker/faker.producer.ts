@@ -1,7 +1,7 @@
 import { InjectQueue } from "@nestjs/bull";
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { ConfigType } from "@nestjs/config";
-import { Cron } from "@nestjs/schedule";
+import { Cron, SchedulerRegistry } from "@nestjs/schedule";
 import random from "random";
 import { UserService } from "../database/user/user.service";
 import { EFakerJob, TFakerQueue } from "./faker.jobs";
@@ -25,6 +25,7 @@ export class FakerProducer {
     private readonly queue: TFakerQueue,
     @Inject(serverEnvironment.KEY)
     private readonly serverEnv: ConfigType<typeof serverEnvironment>,
+    private readonly schedulerRegistry: SchedulerRegistry,
     private readonly userService: UserService
   ) {}
 
@@ -37,8 +38,10 @@ export class FakerProducer {
   };
 
   async asyncConstructor() {
-    if (this.serverEnv.isProd || this.serverEnv.isStaging) await this.queue.pause();
-    else {
+    if (this.serverEnv.isProd || this.serverEnv.isStaging) {
+      await this.queue.pause();
+      this.schedulerRegistry.getCronJob(ECronJobRegistry.PopulateFakerQueue).stop();
+    } else {
       await this.queue.clean(0);
       this.populateFakerQueue();
     }

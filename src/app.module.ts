@@ -6,6 +6,7 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
 import { Enhancer, GraphQLModule } from "@nestjs/graphql";
 import { ScheduleModule } from "@nestjs/schedule";
 import { TypeOrmModule, TypeOrmModuleOptions } from "@nestjs/typeorm";
+import { PrometheusModule } from "@willsoto/nestjs-prometheus";
 import * as store from "cache-manager-ioredis";
 import connectRedis from "connect-redis";
 import cookie from "cookie";
@@ -35,6 +36,7 @@ const ExpresSessionStore = connectRedis(expressSession);
 
 @Module({
   imports: [
+    PrometheusModule.register(),
     ScheduleModule.forRoot(),
     ConfigModule.forRoot({ load: [serverEnvironment] }),
     CacheModule.registerAsync<RedisOptions>({

@@ -1,7 +1,9 @@
 import { UseGuards } from "@nestjs/common";
-import { Args, Mutation, Parent, Query, ResolveField, Resolver } from "@nestjs/graphql";
+import { Args, Info, Mutation, Parent, Query, ResolveField, Resolver } from "@nestjs/graphql";
+import { CacheScope } from "apollo-server-types";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
+import { GraphQLResolveInfo } from "graphql";
 import { FindOptionsWhere } from "typeorm";
 import { DataLoaders } from "../../../decorators/dataLoaders";
 import { UserPassport } from "../../../decorators/userPassport";
@@ -11,6 +13,8 @@ import { IDataLoaders } from "../../dataloader/dataloader.service";
 import { BasicAuthGuard } from "../../guards/BasicAuthGuard";
 import { RedditMemeEntity } from "../redditMeme/redditMeme.entity";
 import { SeasonService } from "../season/season.service";
+import { ELeaderboard } from "./../../../enums/ELeaderboard";
+import { TakeArg } from "./../../../generics/pagination.g";
 import { GoodBoyPointsService } from "./../goodBoyPoints/gbp.service";
 import { RedditBetEntity } from "./redditBet.entity";
 import {
@@ -22,7 +26,14 @@ import {
   UserRedditBetsArgs,
   UserRedditBetsPaginatedArgs,
 } from "./redditBet.resolver.args";
-import { LeaderboardDTO, LeaderboardPDTO, RedditBetPDTO, SeasonSummaryDTO } from "./redditBet.resolver.dtos";
+import {
+  AllLeaderboardsDTO,
+  LeaderboardPDTO,
+  LeaderDTO,
+  MyLeaderboardsDTO,
+  RedditBetPDTO,
+  SeasonSummaryDTO,
+} from "./redditBet.resolver.dtos";
 import { RedditBetService } from "./redditBet.service";
 dayjs.extend(utc);
 
@@ -95,29 +106,72 @@ export class RedditBetResolver {
 
   @Query(() => LeaderboardPDTO)
   async leaderboard(
-    // @Info() info: GraphQLResolveInfo,
+    @Info() info: GraphQLResolveInfo,
     @Args() { eLeaderboard, seasonId, take, skip }: LeaderboardPaginatedArgs
   ): Promise<LeaderboardPDTO> {
-    // info.cacheControl.setCacheHint({ maxAge: 60, scope: CacheScope.Public });
+    info.cacheControl.setCacheHint({ maxAge: 60, scope: CacheScope.Public });
     seasonId = seasonId || (await this.seasonService.getCurrentSeasonId());
-    const leaderBoard = await this.service
-      .leaderboardQuery({ eLeaderboard, seasonId })
-      .limit(take)
-      .offset(skip)
-      .getRawMany<LeaderboardDTO>();
+    const leaderBoard = await this.service.leaderboardQuery({ eLeaderboard, seasonId }).limit(take).offset(skip).getRawMany<LeaderDTO>();
     return { items: leaderBoard, hasMore: take === leaderBoard.length };
   }
 
-  @Query(() => LeaderboardDTO, { nullable: true })
+  @Query(() => AllLeaderboardsDTO)
+  async allLeaderboards(@Info() info: GraphQLResolveInfo, @Args() { take }: TakeArg): Promise<AllLeaderboardsDTO> {
+    info.cacheControl.setCacheHint({ maxAge: 60, scope: CacheScope.Public });
+    const seasonId = await this.seasonService.getCurrentSeasonId();
+    return {
+      bestTrade: await this.service
+        .leaderboardQuery({ eLeaderboard: ELeaderboard.BestTrade, seasonId })
+        .limit(take)
+        .getRawMany<LeaderDTO>(),
+      daily: await this.service.leaderboardQuery({ eLeaderboard: ELeaderboard.BestTrade, seasonId }).limit(take).getRawMany<LeaderDTO>(),
+      ever: await this.service.leaderboardQuery({ eLeaderboard: ELeaderboard.BestTrade, seasonId }).limit(take).getRawMany<LeaderDTO>(),
+      largestYolo: await this.service
+        .leaderboardQuery({ eLeaderboard: ELeaderboard.BestTrade, seasonId })
+        .limit(take)
+        .getRawMany<LeaderDTO>(),
+      season: await this.service.leaderboardQuery({ eLeaderboard: ELeaderboard.BestTrade, seasonId }).limit(take).getRawMany<LeaderDTO>(),
+      weekly: await this.service.leaderboardQuery({ eLeaderboard: ELeaderboard.BestTrade, seasonId }).limit(take).getRawMany<LeaderDTO>(),
+    };
+  }
+
+  @Query(() => LeaderDTO, { nullable: true })
   async myLeaderboard(
-    // @Info() info: GraphQLResolveInfo,
+    @Info() info: GraphQLResolveInfo,
     @Args() { eLeaderboard, seasonId }: LeaderboardArgs,
     @UserPassport() passport?: IUserPassport
   ) {
-    // info.cacheControl.setCacheHint({ maxAge: 60, scope: CacheScope.Private });
+    info.cacheControl.setCacheHint({ maxAge: 60, scope: CacheScope.Private });
     if (!passport) return;
     seasonId = seasonId || (await this.seasonService.getCurrentSeasonId());
-    return this.service.leaderboardQuery({ eLeaderboard, seasonId, username: passport.username }).getRawOne<LeaderboardDTO>();
+    return this.service.leaderboardQuery({ eLeaderboard, seasonId, username: passport.username }).getRawOne<LeaderDTO>();
+  }
+
+  @Query(() => MyLeaderboardsDTO, { nullable: true })
+  async myLeaderboards(@Info() info: GraphQLResolveInfo, @UserPassport() passport?: IUserPassport): Promise<MyLeaderboardsDTO | undefined> {
+    if (!passport) return;
+    info.cacheControl.setCacheHint({ maxAge: 60, scope: CacheScope.Private });
+    const seasonId = await this.seasonService.getCurrentSeasonId();
+    return {
+      bestTrade: await this.service
+        .leaderboardQuery({ eLeaderboard: ELeaderboard.BestTrade, seasonId, username: passport.username })
+        .getRawOne<LeaderDTO>(),
+      daily: await this.service
+        .leaderboardQuery({ eLeaderboard: ELeaderboard.Daily, seasonId, username: passport.username })
+        .getRawOne<LeaderDTO>(),
+      ever: await this.service
+        .leaderboardQuery({ eLeaderboard: ELeaderboard.Ever, seasonId, username: passport.username })
+        .getRawOne<LeaderDTO>(),
+      largestYolo: await this.service
+        .leaderboardQuery({ eLeaderboard: ELeaderboard.LargestYolo, seasonId, username: passport.username })
+        .getRawOne<LeaderDTO>(),
+      season: await this.service
+        .leaderboardQuery({ eLeaderboard: ELeaderboard.Season, seasonId, username: passport.username })
+        .getRawOne<LeaderDTO>(),
+      weekly: await this.service
+        .leaderboardQuery({ eLeaderboard: ELeaderboard.Weekly, seasonId, username: passport.username })
+        .getRawOne<LeaderDTO>(),
+    };
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -1,12 +1,11 @@
 import { HttpModule } from "@nestjs/axios";
 import { Module } from "@nestjs/common";
-import { CryptoCompareController } from "./cryptocompare.controller";
+import { CryptoCompareResolver } from "./cryptocompare.resolver";
 import { CryptoCompareService } from "./cryptocompare.service";
 
 @Module({
   imports: [HttpModule.register({ baseURL: "https://min-api.cryptocompare.com" })],
-  providers: [CryptoCompareService],
-  controllers: [CryptoCompareController],
+  providers: [CryptoCompareService, CryptoCompareResolver],
   exports: [CryptoCompareService],
 })
 export class CryptoCompareModule {}

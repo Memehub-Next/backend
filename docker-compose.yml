@@ -3,7 +3,7 @@ services:
   backend:
     build: .
     container_name: backend
-    command: bash -c "npm run migration:run:js && npm run start:prod"
+    command: npm run start:prod
     restart: on-failure
     env_file:
       - ./.env

@@ -1,7 +1,7 @@
 import { Field, Int, ObjectType } from "@nestjs/graphql";
 import { CreatePDTO } from "../../../generics/pagination.g";
 import { RedditBetEntity } from "./redditBet.entity";
-import { ILeaderboardData, IProfitLossChartDataDTO, ISeasonSummary } from "./redditBet.service";
+import { IProfitLossChartDataDTO, ISeasonSummary } from "./redditBet.service";
 
 @ObjectType()
 export class ProfitLossChartDataDTO implements IProfitLossChartDataDTO {
@@ -46,7 +46,7 @@ export class SeasonSummaryDTO implements ISeasonSummary {
 }
 
 @ObjectType()
-export class LeaderboardDTO implements ILeaderboardData {
+export class LeaderDTO {
   @Field()
   username: string;
 
@@ -61,7 +61,49 @@ export class LeaderboardDTO implements ILeaderboardData {
 }
 
 @ObjectType()
-export class LeaderboardPDTO extends CreatePDTO(LeaderboardDTO) {}
+export class MyLeaderboardsDTO {
+  @Field(() => LeaderDTO, { nullable: true })
+  bestTrade?: LeaderDTO;
+
+  @Field(() => LeaderDTO, { nullable: true })
+  daily?: LeaderDTO;
+
+  @Field(() => LeaderDTO, { nullable: true })
+  ever?: LeaderDTO;
+
+  @Field(() => LeaderDTO, { nullable: true })
+  largestYolo?: LeaderDTO;
+
+  @Field(() => LeaderDTO, { nullable: true })
+  season?: LeaderDTO;
+
+  @Field(() => LeaderDTO, { nullable: true })
+  weekly?: LeaderDTO;
+}
+
+@ObjectType()
+export class AllLeaderboardsDTO {
+  @Field(() => [LeaderDTO])
+  bestTrade: LeaderDTO[];
+
+  @Field(() => [LeaderDTO])
+  daily: LeaderDTO[];
+
+  @Field(() => [LeaderDTO])
+  ever: LeaderDTO[];
+
+  @Field(() => [LeaderDTO])
+  largestYolo: LeaderDTO[];
+
+  @Field(() => [LeaderDTO])
+  season: LeaderDTO[];
+
+  @Field(() => [LeaderDTO])
+  weekly: LeaderDTO[];
+}
+
+@ObjectType()
+export class LeaderboardPDTO extends CreatePDTO(LeaderDTO) {}
 
 @ObjectType()
 export class RedditBetPDTO extends CreatePDTO(RedditBetEntity) {}

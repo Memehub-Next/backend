@@ -12,5 +12,5 @@ export const CRON_SCHEDULES_BY_MINS = {
 
 export const CRON_SCHEDULES = {
   [ECronJobRegistry.PopulateFakerQueue]: "*/5 * * * *",
-  [ECronJobRegistry.IncrementSeasonId]: "0 0 * * *",
+  [ECronJobRegistry.IncrementSeasonId]: process.env.ENV === "production" ? "0 0 * * 0" : "0 0 * * *",
 };
