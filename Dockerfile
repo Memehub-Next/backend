@@ -17,4 +17,5 @@ WORKDIR /app/
 ENV PATH /app/node_modules/.bin:$PATH
 COPY --from=build /app/dist ./dist
 COPY --from=deps /app ./
+COPY ./start.backend.sh ./start.backend.sh
 EXPOSE 5000

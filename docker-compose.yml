@@ -3,7 +3,7 @@ services:
   backend:
     build: .
     container_name: backend
-    command: npm run start:prod
+    command: sh ./start.backend.sh
     restart: on-failure
     env_file:
       - ./.env
