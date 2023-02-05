@@ -2,6 +2,7 @@
 **/backups
 .env
 schema.gql
+services/data/grafana/grafana.db
 
 # compiled output
 /dist
