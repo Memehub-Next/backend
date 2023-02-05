@@ -3,9 +3,13 @@ import { ApolloDriver, ApolloDriverConfig } from "@nestjs/apollo";
 import { BullModule } from "@nestjs/bull";
 import { CacheModule, Logger, MiddlewareConsumer, Module, NestModule } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
+import { APP_INTERCEPTOR } from "@nestjs/core";
 import { Enhancer, GraphQLModule } from "@nestjs/graphql";
 import { ScheduleModule } from "@nestjs/schedule";
 import { TypeOrmModule, TypeOrmModuleOptions } from "@nestjs/typeorm";
+import { OgmaInterceptor, OgmaModule } from "@ogma/nestjs-module";
+import { ExpressParser } from "@ogma/platform-express";
+import { GraphQLParser } from "@ogma/platform-graphql";
 import { PrometheusModule } from "@willsoto/nestjs-prometheus";
 import * as store from "cache-manager-ioredis";
 import connectRedis from "connect-redis";
@@ -19,7 +23,6 @@ import { IEnvironments } from "./config/environment.interface";
 import { databaseEnvironment } from "./config/services/database.config";
 import { redisEnvironment } from "./config/services/redis.config";
 import { serverEnvironment } from "./config/services/server.config";
-import { AppLoggerMiddleware } from "./middleware/request-logger";
 import { AuthModule } from "./modules/auth/auth.module";
 import { CryptoCompareModule } from "./modules/cryptocompare/cryptocompare.module";
 import { GoodBoyPointsModule } from "./modules/database/goodBoyPoints/gbp.module";
@@ -44,7 +47,7 @@ const ExpresSessionStore = connectRedis(expressSession);
       imports: [ConfigModule.forRoot({ load: [redisEnvironment] })],
       inject: [ConfigService],
       useFactory: (configService: ConfigService<IEnvironments, true>) => ({
-        ttl: 60,
+        ttl: 60 * 1000,
         store,
         ...configService.get("redisEnvironment", { infer: true }),
       }),
@@ -130,19 +133,43 @@ const ExpresSessionStore = connectRedis(expressSession);
         context: (ctx: any) => ({ ...ctx, loaders: dataloaderService.dataloaders(ctx.req?.user) }),
         autoSchemaFile: join(process.cwd(), "schema.gql"),
         sortSchema: true,
-        plugins: [], // [responseCachePlugin()],
+        // cache: new KeyvAdapter(new Keyv({ store: new KeyvRedis("redis://localhost:6379") })),
+        // plugins: [
+        //   responseCachePlugin({
+        //     sessionId: async (requestContext: GraphQLRequestContext<IGraphQLContext>) => requestContext.context.req?.user?.username,
+        //   }),
+        // ],
         fieldResolverEnhancers: ["filters", "guards"] as Enhancer[],
         // resolvers: { JSON: GraphQLJSON },
       }),
     }),
     CryptoCompareModule,
+    OgmaModule.forRoot({
+      service: {
+        color: true,
+        json: false,
+        application: "NestJS",
+      },
+      interceptor: {
+        http: ExpressParser,
+        ws: false,
+        gql: GraphQLParser,
+        rpc: false,
+      },
+    }),
   ],
-  providers: [Logger],
+  providers: [
+    Logger,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: OgmaInterceptor,
+    },
+  ],
 })
 export class AppModule implements NestModule {
   constructor(private readonly configService: ConfigService<IEnvironments, true>, private readonly redisService: RedisService) {}
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(AppLoggerMiddleware).forRoutes("*");
+    // consumer.apply(AppLoggerMiddleware).forRoutes("*");
     consumer
       .apply(
         expressSession({

@@ -1,9 +1,8 @@
-import { UseGuards } from "@nestjs/common";
-import { Args, Info, Mutation, Parent, Query, ResolveField, Resolver } from "@nestjs/graphql";
-import { CacheScope } from "apollo-server-types";
+import { CacheInterceptor, CacheKey, CACHE_MANAGER, Inject, UseGuards, UseInterceptors } from "@nestjs/common";
+import { Args, Mutation, Parent, Query, ResolveField, Resolver } from "@nestjs/graphql";
+import { Cache } from "cache-manager";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
-import { GraphQLResolveInfo } from "graphql";
 import { FindOptionsWhere } from "typeorm";
 import { DataLoaders } from "../../../decorators/dataLoaders";
 import { UserPassport } from "../../../decorators/userPassport";
@@ -39,15 +38,19 @@ dayjs.extend(utc);
 
 @Resolver(() => RedditBetEntity)
 export class RedditBetResolver {
+  // private logger = new Logger("Caching");
+
   constructor(
+    @Inject(CACHE_MANAGER)
+    private readonly cacheManager: Cache,
     private readonly service: RedditBetService,
     private readonly seasonService: SeasonService,
     private readonly gbpService: GoodBoyPointsService
   ) {}
 
   @ResolveField(() => RedditMemeEntity)
-  meme(@DataLoaders() { redditMeme: { byId } }: IDataLoaders, @Parent() { redditMemeId }: RedditBetEntity): Promise<RedditMemeEntity> {
-    return byId.load(redditMemeId);
+  meme(@DataLoaders() { redditMeme }: IDataLoaders, @Parent() { redditMemeId }: RedditBetEntity): Promise<RedditMemeEntity> {
+    return redditMeme.byId.load(redditMemeId);
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -105,54 +108,58 @@ export class RedditBetResolver {
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   @Query(() => LeaderboardPDTO)
-  async leaderboard(
-    @Info() info: GraphQLResolveInfo,
-    @Args() { eLeaderboard, seasonId, take, skip }: LeaderboardPaginatedArgs
-  ): Promise<LeaderboardPDTO> {
-    info.cacheControl.setCacheHint({ maxAge: 60, scope: CacheScope.Public });
+  async leaderboard(@Args() { eLeaderboard, seasonId, take, skip }: LeaderboardPaginatedArgs): Promise<LeaderboardPDTO> {
     seasonId = seasonId || (await this.seasonService.getCurrentSeasonId());
+    const cachKey = `${RedditBetResolver.name}:leaderboard:${JSON.stringify({ eLeaderboard, seasonId, take, skip })}`;
+    const cached = await this.cacheManager.get<LeaderboardPDTO>(cachKey);
+    if (cached) return cached;
     const leaderBoard = await this.service.leaderboardQuery({ eLeaderboard, seasonId }).limit(take).offset(skip).getRawMany<LeaderDTO>();
-    return { items: leaderBoard, hasMore: take === leaderBoard.length };
+    const result = { items: leaderBoard, hasMore: take === leaderBoard.length };
+    await this.cacheManager.set(cachKey, result);
+    return result;
   }
 
   @Query(() => AllLeaderboardsDTO)
-  async allLeaderboards(@Info() info: GraphQLResolveInfo, @Args() { take }: TakeArg): Promise<AllLeaderboardsDTO> {
-    info.cacheControl.setCacheHint({ maxAge: 60, scope: CacheScope.Public });
+  @CacheKey("AllLeaderboards:")
+  @UseInterceptors(CacheInterceptor)
+  async allLeaderboards(@Args() { take }: TakeArg): Promise<AllLeaderboardsDTO> {
     const seasonId = await this.seasonService.getCurrentSeasonId();
     return {
       bestTrade: await this.service
         .leaderboardQuery({ eLeaderboard: ELeaderboard.BestTrade, seasonId })
         .limit(take)
         .getRawMany<LeaderDTO>(),
-      daily: await this.service.leaderboardQuery({ eLeaderboard: ELeaderboard.BestTrade, seasonId }).limit(take).getRawMany<LeaderDTO>(),
-      ever: await this.service.leaderboardQuery({ eLeaderboard: ELeaderboard.BestTrade, seasonId }).limit(take).getRawMany<LeaderDTO>(),
+      daily: await this.service.leaderboardQuery({ eLeaderboard: ELeaderboard.Daily, seasonId }).limit(take).getRawMany<LeaderDTO>(),
+      ever: await this.service.leaderboardQuery({ eLeaderboard: ELeaderboard.Ever, seasonId }).limit(take).getRawMany<LeaderDTO>(),
       largestYolo: await this.service
-        .leaderboardQuery({ eLeaderboard: ELeaderboard.BestTrade, seasonId })
+        .leaderboardQuery({ eLeaderboard: ELeaderboard.LargestYolo, seasonId })
         .limit(take)
         .getRawMany<LeaderDTO>(),
-      season: await this.service.leaderboardQuery({ eLeaderboard: ELeaderboard.BestTrade, seasonId }).limit(take).getRawMany<LeaderDTO>(),
-      weekly: await this.service.leaderboardQuery({ eLeaderboard: ELeaderboard.BestTrade, seasonId }).limit(take).getRawMany<LeaderDTO>(),
+      season: await this.service.leaderboardQuery({ eLeaderboard: ELeaderboard.Season, seasonId }).limit(take).getRawMany<LeaderDTO>(),
+      weekly: await this.service.leaderboardQuery({ eLeaderboard: ELeaderboard.Weekly, seasonId }).limit(take).getRawMany<LeaderDTO>(),
     };
   }
 
   @Query(() => LeaderDTO, { nullable: true })
-  async myLeaderboard(
-    @Info() info: GraphQLResolveInfo,
-    @Args() { eLeaderboard, seasonId }: LeaderboardArgs,
-    @UserPassport() passport?: IUserPassport
-  ) {
-    info.cacheControl.setCacheHint({ maxAge: 60, scope: CacheScope.Private });
+  async myLeaderboard(@Args() { eLeaderboard, seasonId }: LeaderboardArgs, @UserPassport() passport?: IUserPassport) {
     if (!passport) return;
     seasonId = seasonId || (await this.seasonService.getCurrentSeasonId());
-    return this.service.leaderboardQuery({ eLeaderboard, seasonId, username: passport.username }).getRawOne<LeaderDTO>();
+    const cachKey = `${RedditBetResolver.name}:myLeaderboard:${JSON.stringify({ eLeaderboard, seasonId, username: passport.username })}`;
+    const cached = await this.cacheManager.get<LeaderboardPDTO>(cachKey);
+    if (cached) return cached;
+    const result = await this.service.leaderboardQuery({ eLeaderboard, seasonId, username: passport.username }).getRawOne<LeaderDTO>();
+    await this.cacheManager.set(cachKey, result);
+    return result;
   }
 
-  @Query(() => MyLeaderboardsDTO, { nullable: true })
-  async myLeaderboards(@Info() info: GraphQLResolveInfo, @UserPassport() passport?: IUserPassport): Promise<MyLeaderboardsDTO | undefined> {
-    if (!passport) return;
-    info.cacheControl.setCacheHint({ maxAge: 60, scope: CacheScope.Private });
+  @Query(() => MyLeaderboardsDTO)
+  async myLeaderboards(@UserPassport() passport?: IUserPassport): Promise<MyLeaderboardsDTO> {
+    if (!passport) return {};
     const seasonId = await this.seasonService.getCurrentSeasonId();
-    return {
+    const cachKey = `${RedditBetResolver.name}:myLeaderboards:${JSON.stringify({ seasonId, username: passport.username })}`;
+    const cached = await this.cacheManager.get<MyLeaderboardsDTO>(cachKey);
+    if (cached) return cached;
+    const result = {
       bestTrade: await this.service
         .leaderboardQuery({ eLeaderboard: ELeaderboard.BestTrade, seasonId, username: passport.username })
         .getRawOne<LeaderDTO>(),
@@ -172,6 +179,8 @@ export class RedditBetResolver {
         .leaderboardQuery({ eLeaderboard: ELeaderboard.Weekly, seasonId, username: passport.username })
         .getRawOne<LeaderDTO>(),
     };
+    await this.cacheManager.set(cachKey, result);
+    return result;
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
