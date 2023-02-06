@@ -23,7 +23,7 @@ export class GoodBoyPointsDataloaderService {
           (prev, gbpEntity) => ({ [gbpEntity.username]: gbpEntity.amount, ...prev }),
           {}
         );
-        return usernames.map((username) => usernameToGbp[username] ?? 100);
+        return usernames.map((username) => usernameToGbp[username] ?? 1000);
       }),
       wojakLevelByUsername: new DataLoader<string, number>(async (usernames) => {
         const wojakLevels = await this.gbpService.wojakLevels(usernames as string[]);

@@ -16,7 +16,7 @@ export class GoodBoyPointsResolver {
   @Query(() => Int)
   async gbpBySeason(@Args() { username, seasonId }: UsernameSeasonIdArgs) {
     const result = await this.service.repo.findOneBy({ username, seasonId });
-    return result?.amount ?? 100;
+    return result?.amount ?? 1000;
   }
 
   @Query(() => Int)
@@ -29,7 +29,7 @@ export class GoodBoyPointsResolver {
   // @UseGuards(RoleGuard)
   // async giveGBP(@UserPassport() { username }: IUserPassport): Promise<boolean> {
   //   const gbpEntity = await this.service.getById({ username });
-  //   gbpEntity.amount += 100;
+  //   gbpEntity.amount += 1000;
   //   await this.service.repo.save(gbpEntity);
   //   return true;
   // }

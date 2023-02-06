@@ -28,6 +28,6 @@ export class GoodBoyPointsEntity {
   user: UserEntity;
 
   @Field(() => Int)
-  @Column("integer", { default: 100 })
+  @Column("integer", { default: 1000 })
   amount: number;
 }
