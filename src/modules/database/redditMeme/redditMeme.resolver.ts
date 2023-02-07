@@ -37,16 +37,12 @@ export class RedditMemeResolver {
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   @Query(() => Int)
-  async redditMemeCount(@UserPassport() userPassport?: IUserPassport) {
-    const memesQ = this.service.repo.createQueryBuilder("reddit_meme").where("reddit_meme.percentile IS NOT NULL");
-    if (!userPassport?.username) return memesQ.cache(10 * 60 * 1000).getCount();
-    else
-      return memesQ
-        .leftJoin("reddit_meme.redditBets", "reddit_bet")
-        .groupBy("reddit_meme.id")
-        .addGroupBy("reddit_bet.reddit_meme_id")
-        .having("COUNT(reddit_bet.username = :username) != 0", { username: userPassport.username })
-        .getCount();
+  async redditMemeCount() {
+    return this.service.repo
+      .createQueryBuilder("reddit_meme")
+      .where("reddit_meme.percentile IS NOT NULL")
+      .cache(10 * 60 * 1000)
+      .getCount();
   }
 
   @Query(() => [RedditMemeEntity])
@@ -54,14 +50,14 @@ export class RedditMemeResolver {
     @Args() { take, skip }: PaginatedArgs,
     @UserPassport() userPassport?: IUserPassport
   ): Promise<RedditMemeEntity[]> {
-    const memesQ = this.service.repo.createQueryBuilder("reddit_meme").where("reddit_meme.percentile IS NOT NULL").offset(skip).limit(take);
+    const memesQ = this.service.repo.createQueryBuilder("reddit_meme").where("reddit_meme.percentile IS NOT NULL");
     if (userPassport?.username)
       memesQ
         .leftJoin("reddit_meme.redditBets", "reddit_bet")
         .groupBy("reddit_meme.id")
         .addGroupBy("reddit_bet.reddit_meme_id")
-        .having("COUNT(reddit_bet.username = :username) != 0", { username: userPassport.username });
-    return memesQ.getMany();
+        .having("reddit_bet.reddit_meme_id IS NULL OR COUNT(reddit_bet.username = :username) != 0", { username: userPassport.username });
+    return memesQ.offset(skip).limit(take).getMany();
   }
 
   @Query(() => RedditMemePDTO)

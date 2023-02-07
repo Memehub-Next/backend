@@ -1,5 +1,5 @@
 import { CacheInterceptor, CacheKey, CACHE_MANAGER, Inject, UseGuards, UseInterceptors } from "@nestjs/common";
-import { Args, Mutation, Parent, Query, ResolveField, Resolver } from "@nestjs/graphql";
+import { Args, Int, Mutation, Parent, Query, ResolveField, Resolver } from "@nestjs/graphql";
 import { Cache } from "cache-manager";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
@@ -57,6 +57,16 @@ export class RedditBetResolver {
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  @Query(() => Int)
+  async redditBetCount(@UserPassport() passport: IUserPassport) {
+    if (!passport) return 0;
+    return this.service.repo
+      .createQueryBuilder("reddit_bet")
+      .where("reddit_bet.username = :username", { username: passport.username })
+      .cache(10 * 60 * 1000)
+      .getCount();
+  }
 
   @Query(() => RedditBetPDTO)
   async userRedditBetsPaginated(
@@ -152,9 +162,9 @@ export class RedditBetResolver {
     return result;
   }
 
-  @Query(() => MyLeaderboardsDTO)
-  async myLeaderboards(@UserPassport() passport?: IUserPassport): Promise<MyLeaderboardsDTO> {
-    if (!passport) return {};
+  @Query(() => MyLeaderboardsDTO, { nullable: true })
+  async myLeaderboards(@UserPassport() passport?: IUserPassport): Promise<MyLeaderboardsDTO | undefined> {
+    if (!passport) return;
     const seasonId = await this.seasonService.getCurrentSeasonId();
     const cachKey = `${RedditBetResolver.name}:myLeaderboards:${JSON.stringify({ seasonId, username: passport.username })}`;
     const cached = await this.cacheManager.get<MyLeaderboardsDTO>(cachKey);
