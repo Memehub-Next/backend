@@ -158,6 +158,7 @@ export class RedditBetResolver {
     const cached = await this.cacheManager.get<LeaderboardPDTO>(cachKey);
     if (cached) return cached;
     const result = await this.service.leaderboardQuery({ eLeaderboard, seasonId, username: passport.username }).getRawOne<LeaderDTO>();
+    if (!result) return;
     await this.cacheManager.set(cachKey, result);
     return result;
   }
