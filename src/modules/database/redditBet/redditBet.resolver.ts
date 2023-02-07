@@ -125,7 +125,7 @@ export class RedditBetResolver {
     if (cached) return cached;
     const leaderBoard = await this.service.leaderboardQuery({ eLeaderboard, seasonId }).limit(take).offset(skip).getRawMany<LeaderDTO>();
     const result = { items: leaderBoard, hasMore: take === leaderBoard.length };
-    await this.cacheManager.set(cachKey, result);
+    await this.cacheManager.set(cachKey, result, 60 * 1000);
     return result;
   }
 
@@ -159,7 +159,7 @@ export class RedditBetResolver {
     if (cached) return cached;
     const result = await this.service.leaderboardQuery({ eLeaderboard, seasonId, username: passport.username }).getRawOne<LeaderDTO>();
     if (!result) return;
-    await this.cacheManager.set(cachKey, result);
+    await this.cacheManager.set(cachKey, result, 60 * 1000);
     return result;
   }
 
@@ -190,7 +190,7 @@ export class RedditBetResolver {
         .leaderboardQuery({ eLeaderboard: ELeaderboard.Weekly, seasonId, username: passport.username })
         .getRawOne<LeaderDTO>(),
     };
-    await this.cacheManager.set(cachKey, result);
+    await this.cacheManager.set(cachKey, result, 60 * 1000);
     return result;
   }
 
