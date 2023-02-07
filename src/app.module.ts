@@ -47,7 +47,7 @@ const ExpresSessionStore = connectRedis(expressSession);
       imports: [ConfigModule.forRoot({ load: [redisEnvironment] })],
       inject: [ConfigService],
       useFactory: (configService: ConfigService<IEnvironments, true>) => ({
-        ttl: 60 * 1000,
+        ttl: 60,
         store,
         ...configService.get("redisEnvironment", { infer: true }),
       }),
